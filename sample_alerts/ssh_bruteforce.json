@@ -1,0 +1,22 @@
+{
+  "rule": {
+    "id": "5763",
+    "level": 10,
+    "description": "Multiple SSH authentication failures"
+  },
+  "agent": {
+    "name": "ubuntu-agent"
+  },
+  "srcip": "192.168.193.140",
+  "timestamp": "2026-08-04T19:30:15Z",
+  "mitre": {
+    "id": [
+      "T1110.001",
+      "T1021.004"
+    ],
+    "tactic": [
+      "Credential Access",
+      "Lateral Movement"
+    ]
+  }
+}
