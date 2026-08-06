@@ -1,25 +1,36 @@
-from google import genai
+from openai import OpenAI
 
-from config import GEMINI_API_KEY, MODEL_NAME
+from config import OPENROUTER_API_KEY, MODEL_NAME
 from prompts import SYSTEM_PROMPT
 
+client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1",
+)
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-
-def analyze_alert(alert):
+def analyze_alert(alert_text):
 
     prompt = f"""
 {SYSTEM_PROMPT}
 
 Alert:
 
-{alert}
+{alert_text}
 """
 
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL_NAME,
-        contents=prompt
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     )
 
-    return response.text
+    return response.choices[0].message.content
+
+
+
+
+
