@@ -1,8 +1,25 @@
 from parser import load_alert
 from ai import analyze_alert
 from report import generate_report, save_report
+from mitre import enrich_mitre
 
-def build_alert_text(alert):
+def format_mitre_info(mitre_info):
+
+    text = ""
+
+    for item in mitre_info:
+
+        text += f"""
+Technique: {item['name']}
+Tactic: {item['tactic']}
+Description: {item['description']}
+Mitigation: {item['mitigation']}
+
+"""
+
+    return text
+
+def build_alert_text(alert,formatted_mitre):
 
     rule = alert.get("rule", {})
     agent = alert.get("agent", {})
@@ -22,14 +39,23 @@ Timestamp: {alert.get("timestamp", "N/A")}
 MITRE IDs: {", ".join(mitre.get("id", []))}
 
 MITRE Tactics: {", ".join(mitre.get("tactic", []))}
+
+Cybersecurity Knowledge
+
+{formatted_mitre}
+
 """
 
 
 def main():
 
     alert = load_alert("sample_alerts/ssh_bruteforce.json")
+    
+    mitre_info = enrich_mitre(alert.get("mitre", {}).get("id", []))
+    
+    formatted_mitre = format_mitre_info(mitre_info)
 
-    alert_text = build_alert_text(alert)
+    alert_text = build_alert_text(alert, formatted_mitre)
 
     print("========== WAZUH ALERT ==========\n")
     print(alert_text)
@@ -43,11 +69,7 @@ def main():
 
     print(analysis)
     print("\nReport saved successfully!")
-
     print(filepath)
-
-    print(analysis)
-
 
 if __name__ == "__main__":
     main()
