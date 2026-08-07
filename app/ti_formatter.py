@@ -1,34 +1,48 @@
 from threat_rating import get_threat_rating
 
-def format_abuseipdb(data):
+def format_abuseipdb(result):
 
-    data = data.get("data", {})
-    
+    data = result.get("data", {})
+
+    country = data.get("countryCode") or "Unknown"
+    isp = data.get("isp") or "Unknown"
+    usage = data.get("usageType") or "Unknown"
     score = data.get("abuseConfidenceScore", 0)
+    reports = data.get("totalReports", 0)
+    whitelisted = data.get("isWhitelisted", False)
+    last_report = data.get("lastReportedAt") or "Never Reported"
 
-    rating = get_threat_rating(score)
+    if score == 0:
+        rating = "🟢 SAFE"
+    elif score <= 25:
+        rating = "🟡 LOW"
+    elif score <= 75:
+        rating = "🟠 MEDIUM"
+    else:
+        rating = "🔴 HIGH"
 
-    report = f"""
+    return f"""
 ========== Threat Intelligence ==========
 
-IP Address : {data.get("ipAddress", "N/A")}
+IP Address : {data.get("ipAddress", "Unknown")}
 
-Country : {data.get("countryCode", "N/A")}
+Country : {country}
 
-ISP : {data.get("isp", "N/A")}
+ISP : {isp}
 
-Usage Type : {data.get("usageType", "N/A")}
+Usage Type : {usage}
 
-Abuse Confidence Score : {data.get("abuseConfidenceScore", "N/A")}%
+Abuse Confidence Score : {score}%
 
 Threat Rating : {rating}
 
-Total Reports : {data.get("totalReports", "N/A")}
+Total Reports : {reports}
 
-Whitelisted : {data.get("isWhitelisted", "N/A")}
+Whitelisted : {whitelisted}
 
-Last Report : {data.get("lastReportedAt", "N/A")}
+Last Report : {last_report}
 
+Lookup Status : ✔ COMPLETED
 """
 
     return report

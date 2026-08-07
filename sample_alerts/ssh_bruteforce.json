@@ -7,7 +7,7 @@
   "agent": {
     "name": "ubuntu-agent"
   },
-  "srcip": "192.168.193.140",
+  "srcip": "8.8.8.8",
   "timestamp": "2026-08-04T19:30:15Z",
   "mitre": {
     "id": [
