@@ -7,7 +7,7 @@ from context_builder import build_context
 from ai import analyze_alert
 from report import generate_report, save_report
 from ip_utils import is_private_ip
-
+from risk_engine import calculate_risk
 
 def build_alert_text(alert):
 
@@ -16,6 +16,7 @@ def build_alert_text(alert):
     mitre = alert.get("mitre", {})
 
     mitre_ids = mitre.get("id", [])
+
     mitre_info = enrich_mitre(mitre_ids)
 
     mitre_text = ""
@@ -23,7 +24,6 @@ def build_alert_text(alert):
     for item in mitre_info:
 
         mitre_text += f"""
-
 Technique: {item['name']}
 Tactic: {item['tactic']}
 Description: {item['description']}
@@ -54,36 +54,51 @@ Cybersecurity Knowledge
 
 def main():
 
-    # ============================
-    # Load Wazuh Alert
-    # ============================
+    # =========================================================
+    # 1. LOAD WAZUH ALERT
+    # =========================================================
 
     alert = load_alert("sample_alerts/ssh_bruteforce.json")
 
-    # Convert JSON into readable text
+    # =========================================================
+    # 2. CONVERT ALERT TO READABLE TEXT
+    # =========================================================
 
     alert_text = build_alert_text(alert)
 
-    print("========== WAZUH ALERT ==========\n")
+    print("\n========== WAZUH ALERT ==========\n")
     print(alert_text)
 
-    # ============================
-    # Extract IOC
-    # ============================
+    # =========================================================
+    # 3. EXTRACT SOURCE IP
+    # =========================================================
 
     source_ip = alert.get("srcip", "")
+
+    # =========================================================
+    # 4. DETECT IOC TYPE
+    # =========================================================
+
     ioc_type = detect_ioc(source_ip)
 
     threat_intelligence = ""
 
-    # ============================
-    # Threat Intelligence
-    # ============================
+    # Default AbuseIPDB score
+    abuse_score = 0
+
+    # =========================================================
+    # 5. THREAT INTELLIGENCE
+    # =========================================================
 
     if ioc_type == "IP":
 
-        # Private IP
+        # -----------------------------------------------------
+        # PRIVATE IP
+        # -----------------------------------------------------
+
         if is_private_ip(source_ip):
+
+            abuse_score = 0
 
             threat_intelligence = f"""
 ========== Threat Intelligence ==========
@@ -105,12 +120,24 @@ Lookup Status : SKIPPED
 
             print(threat_intelligence)
 
-        # Public IP
+        # -----------------------------------------------------
+        # PUBLIC IP
+        # -----------------------------------------------------
+
         else:
 
             print("\nChecking AbuseIPDB...\n")
 
             result = check_ip(source_ip)
+
+            # Extract AbuseIPDB confidence score
+            abuse_score = result.get(
+                "data",
+                {}
+            ).get(
+                "abuseConfidenceScore",
+                0
+            )
 
             threat_intelligence = format_abuseipdb(result)
 
@@ -118,31 +145,79 @@ Lookup Status : SKIPPED
 
     else:
 
-        threat_intelligence = f"""
+        threat_intelligence = """
 ========== Threat Intelligence ==========
 
-IOC Type : {ioc_type}
+IOC Type : UNKNOWN
 
-Threat Intelligence Lookup is currently supported
-only for IP addresses.
+Threat Intelligence : Not Available
 
 Lookup Status : SKIPPED
 """
 
         print(threat_intelligence)
 
-    # ============================
-    # Build AI Context
-    # ============================
+    # =========================================================
+    # 6. RISK ENGINE
+    # =========================================================
+
+    mitre_ids = alert.get(
+        "mitre",
+        {}
+    ).get(
+        "id",
+        []
+    )
+
+    rule_level = alert.get(
+        "rule",
+        {}
+    ).get(
+        "level",
+        0
+    )
+
+    risk_assessment = calculate_risk(
+        rule_level,
+        source_ip,
+        abuse_score,
+        mitre_ids
+    )
+
+    # =========================================================
+    # 7. DISPLAY RISK ASSESSMENT
+    # =========================================================
+
+    print("\n========== RISK ASSESSMENT ==========\n")
+
+    print(
+        f"Risk Score : "
+        f"{risk_assessment['score']}/100"
+    )
+
+    print(
+        f"Risk Level : "
+        f"{risk_assessment['level']}"
+    )
+
+    print("\nRisk Factors:")
+
+    for factor in risk_assessment["factors"]:
+
+        print(f"- {factor}")
+
+    # =========================================================
+    # 8. BUILD AI CONTEXT
+    # =========================================================
 
     context = build_context(
         alert_text,
         threat_intelligence
     )
 
-    # ============================
-    # AI Analysis
-    # ============================
+    # =========================================================
+    # 9. AI SOC ANALYSIS
+    # =========================================================
 
     print("\n========== AI SOC ANALYSIS ==========\n")
 
@@ -150,19 +225,27 @@ Lookup Status : SKIPPED
 
     print(analysis)
 
-    # ============================
-    # Generate Report
-    # ============================
+    # =========================================================
+    # 10. GENERATE REPORT
+    # =========================================================
 
     report = generate_report(
-        alert_text + "\n" + threat_intelligence,
+        alert_text
+        + "\n"
+        + threat_intelligence,
         analysis
     )
 
+    # =========================================================
+    # 11. SAVE REPORT
+    # =========================================================
+
     filepath = save_report(report)
 
-    print("\nReport Saved Successfully!")
-    print(filepath)
+    print(
+        f"\nReport Saved Successfully!\n"
+        f"{filepath}"
+    )
 
 
 if __name__ == "__main__":
