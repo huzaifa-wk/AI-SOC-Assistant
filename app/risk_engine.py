@@ -87,7 +87,7 @@ def calculate_risk(rule_level, source_ip, abuse_score, mitre_ids):
         )
 
     # =========================================================
-    # 5. LIMIT SCORE TO 100
+    # 5. LIMIT SCORE
     # =========================================================
 
     score = min(score, 100)
@@ -113,11 +113,63 @@ def calculate_risk(rule_level, source_ip, abuse_score, mitre_ids):
         risk_level = "LOW"
 
     # =========================================================
-    # 7. RETURN COMPLETE RISK ASSESSMENT
+    # 7. DETERMINE INCIDENT STATUS
+    # =========================================================
+
+    if score >= 75:
+
+        incident_status = "SUSPICIOUS"
+
+    elif score >= 50:
+
+        incident_status = "SUSPICIOUS"
+
+    else:
+
+        incident_status = "INCONCLUSIVE"
+
+    # =========================================================
+    # 8. DETERMINE CONFIDENCE
+    # =========================================================
+
+    confidence_points = 0
+
+    # Strong Wazuh detection
+    if rule_level >= 10:
+        confidence_points += 2
+
+    # MITRE mappings provide behavioral context
+    if mitre_ids:
+        confidence_points += 1
+
+    # External reputation
+    if abuse_score > 0:
+        confidence_points += 1
+
+    # Private IP has no external reputation
+    if is_private_ip(source_ip):
+        confidence_points -= 1
+
+    if confidence_points >= 4:
+
+        confidence = "HIGH"
+
+    elif confidence_points >= 2:
+
+        confidence = "MEDIUM"
+
+    else:
+
+        confidence = "LOW"
+
+    # =========================================================
+    # 9. RETURN COMPLETE RISK ASSESSMENT
     # =========================================================
 
     return {
         "score": score,
         "level": risk_level,
+        "status": incident_status,
+        "confidence": confidence,
         "factors": factors
     }

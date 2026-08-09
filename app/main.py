@@ -191,19 +191,24 @@ Lookup Status : SKIPPED
     print("\n========== RISK ASSESSMENT ==========\n")
 
     print(
-        f"Risk Score : "
-        f"{risk_assessment['score']}/100"
-    )
+    f"Risk Score : {risk_assessment['score']}/100"
+)
 
     print(
-        f"Risk Level : "
-        f"{risk_assessment['level']}"
-    )
+    f"Risk Level : {risk_assessment['level']}"
+)
 
-    print("\nRisk Factors:")
+    print(
+    f"Incident Status : {risk_assessment['status']}"
+)
+
+    print(
+    f"Confidence : {risk_assessment['confidence']}"
+)
+
+    print("\nRisk Factors:\n")
 
     for factor in risk_assessment["factors"]:
-
         print(f"- {factor}")
 
     # =========================================================
@@ -211,9 +216,10 @@ Lookup Status : SKIPPED
     # =========================================================
 
     context = build_context(
-        alert_text,
-        threat_intelligence
-    )
+    alert_text,
+    threat_intelligence,
+    risk_assessment
+)
 
     # =========================================================
     # 9. AI SOC ANALYSIS
