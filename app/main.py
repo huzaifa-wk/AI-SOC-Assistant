@@ -8,6 +8,8 @@ from ai import analyze_alert
 from report import generate_report, save_report
 from ip_utils import is_private_ip
 from risk_engine import calculate_risk
+from incident_classifier import classify_incident
+
 
 def build_alert_text(alert):
 
@@ -65,6 +67,12 @@ def main():
     # =========================================================
 
     alert_text = build_alert_text(alert)
+    
+    # =========================================================
+    # CLASSIFY THE INCIDENT
+    # =========================================================
+    
+    incident_classification = classify_incident(alert)
 
     print("\n========== WAZUH ALERT ==========\n")
     print(alert_text)
@@ -210,19 +218,46 @@ Lookup Status : SKIPPED
 
     for factor in risk_assessment["factors"]:
         print(f"- {factor}")
+    
+    # =========================================================
+        # 8. DISPLAY INCIDENT CLASSIFICATION
+    # =========================================================
+    
+    print("\n========== INCIDENT CLASSIFICATION ==========\n")
+
+    print(
+    f"Incident Type : "
+    f"{incident_classification['incident_type']}"
+)
+
+    print(
+    f"Attack Category : "
+    f"{incident_classification['attack_category']}"
+)
+
+    print(
+    f"Primary Technique : "
+    f"{incident_classification['primary_technique']}"
+)
+
+    print(
+    f"Protocol : "
+    f"{incident_classification['protocol']}"
+)
 
     # =========================================================
-    # 8. BUILD AI CONTEXT
+    # 9. BUILD AI CONTEXT
     # =========================================================
 
     context = build_context(
     alert_text,
     threat_intelligence,
-    risk_assessment
+    risk_assessment,
+    incident_classification
 )
 
     # =========================================================
-    # 9. AI SOC ANALYSIS
+    # 10. AI SOC ANALYSIS
     # =========================================================
 
     print("\n========== AI SOC ANALYSIS ==========\n")
@@ -232,7 +267,7 @@ Lookup Status : SKIPPED
     print(analysis)
 
     # =========================================================
-    # 10. GENERATE REPORT
+    # 11. GENERATE REPORT
     # =========================================================
 
     report = generate_report(
@@ -243,7 +278,7 @@ Lookup Status : SKIPPED
     )
 
     # =========================================================
-    # 11. SAVE REPORT
+    # 12. SAVE REPORT
     # =========================================================
 
     filepath = save_report(report)
