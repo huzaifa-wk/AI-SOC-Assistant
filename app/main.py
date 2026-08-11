@@ -9,7 +9,12 @@ from report import generate_report, save_report
 from ip_utils import is_private_ip
 from risk_engine import calculate_risk
 from incident_classifier import classify_incident
+from evidence import build_evidence
 
+
+# ============================================================
+# BUILD READABLE WAZUH ALERT
+# ============================================================
 
 def build_alert_text(alert):
 
@@ -18,6 +23,7 @@ def build_alert_text(alert):
     mitre = alert.get("mitre", {})
 
     mitre_ids = mitre.get("id", [])
+    mitre_tactics = mitre.get("tactic", [])
 
     mitre_info = enrich_mitre(mitre_ids)
 
@@ -26,10 +32,10 @@ def build_alert_text(alert):
     for item in mitre_info:
 
         mitre_text += f"""
-Technique: {item['name']}
-Tactic: {item['tactic']}
-Description: {item['description']}
-Mitigation: {item['mitigation']}
+Technique: {item.get("name", "N/A")}
+Tactic: {item.get("tactic", "N/A")}
+Description: {item.get("description", "N/A")}
+Mitigation: {item.get("mitigation", "N/A")}
 
 """
 
@@ -44,9 +50,9 @@ Source IP: {alert.get("srcip", "N/A")}
 
 Timestamp: {alert.get("timestamp", "N/A")}
 
-MITRE IDs: {", ".join(mitre.get("id", []))}
+MITRE IDs: {", ".join(mitre_ids)}
 
-MITRE Tactics: {", ".join(mitre.get("tactic", []))}
+MITRE Tactics: {", ".join(mitre_tactics)}
 
 Cybersecurity Knowledge
 
@@ -54,59 +60,225 @@ Cybersecurity Knowledge
 """
 
 
+# ============================================================
+# FORMAT RISK ASSESSMENT
+# ============================================================
+
+def print_risk_assessment(risk_assessment):
+
+    print("\n========== RISK ASSESSMENT ==========\n")
+
+    print(
+        f"Risk Score : "
+        f"{risk_assessment.get('score', 0)}/100"
+    )
+
+    print(
+        f"Risk Level : "
+        f"{risk_assessment.get('level', 'UNKNOWN')}"
+    )
+
+    print(
+        f"Incident Status : "
+        f"{risk_assessment.get('status', 'UNKNOWN')}"
+    )
+
+    print(
+        f"Confidence : "
+        f"{risk_assessment.get('confidence', 'UNKNOWN')}"
+    )
+
+    factors = risk_assessment.get("factors", [])
+
+    if factors:
+
+        print("\nRisk Factors:\n")
+
+        for factor in factors:
+            print(f"- {factor}")
+
+
+# ============================================================
+# PRINT INCIDENT CLASSIFICATION
+# ============================================================
+
+def print_classification(classification):
+
+    print("\n========== INCIDENT CLASSIFICATION ==========\n")
+
+    print(
+        f"Incident Type : "
+        f"{classification.get('incident_type', 'UNKNOWN')}"
+    )
+
+    print(
+        f"Attack Category : "
+        f"{classification.get('attack_category', 'UNKNOWN')}"
+    )
+
+    print(
+        f"Primary Technique : "
+        f"{classification.get('primary_technique', 'UNKNOWN')}"
+    )
+
+    print(
+        f"Protocol : "
+        f"{classification.get('protocol', 'UNKNOWN')}"
+    )
+
+
+# ============================================================
+# PRINT EVIDENCE
+# ============================================================
+
+def print_evidence(evidence):
+
+    print("\n========== EVIDENCE ASSESSMENT ==========\n")
+
+    print("Confirmed Evidence:\n")
+
+    for item in evidence.get("confirmed", []):
+        print(f"- {item}")
+
+    print("\nSuspicious Observations:\n")
+
+    for item in evidence.get("suspicious", []):
+        print(f"- {item}")
+
+    print("\nUnconfirmed:\n")
+
+    for item in evidence.get("unconfirmed", []):
+        print(f"- {item}")
+
+
+# ============================================================
+# BUILD REPORT CONTEXT
+# ============================================================
+
+def build_report_context(
+    alert_text,
+    threat_intelligence,
+    risk_assessment,
+    classification,
+    evidence
+):
+
+    report_context = f"""
+{alert_text}
+
+========== Threat Intelligence ==========
+
+{threat_intelligence}
+
+========== RISK ASSESSMENT ==========
+
+Risk Score : {risk_assessment.get("score", 0)}/100
+Risk Level : {risk_assessment.get("level", "UNKNOWN")}
+Incident Status : {risk_assessment.get("status", "UNKNOWN")}
+Confidence : {risk_assessment.get("confidence", "UNKNOWN")}
+
+Risk Factors:
+
+"""
+
+    for factor in risk_assessment.get("factors", []):
+        report_context += f"- {factor}\n"
+
+    report_context += f"""
+
+========== INCIDENT CLASSIFICATION ==========
+
+Incident Type : {classification.get("incident_type", "UNKNOWN")}
+Attack Category : {classification.get("attack_category", "UNKNOWN")}
+Primary Technique : {classification.get("primary_technique", "UNKNOWN")}
+Protocol : {classification.get("protocol", "UNKNOWN")}
+
+========== EVIDENCE ASSESSMENT ==========
+
+Confirmed Evidence:
+
+"""
+
+    for item in evidence.get("confirmed", []):
+        report_context += f"- {item}\n"
+
+    report_context += """
+
+Suspicious Observations:
+
+"""
+
+    for item in evidence.get("suspicious", []):
+        report_context += f"- {item}\n"
+
+    report_context += """
+
+Unconfirmed:
+
+"""
+
+    for item in evidence.get("unconfirmed", []):
+        report_context += f"- {item}\n"
+
+    return report_context
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
 def main():
 
-    # =========================================================
+    # ========================================================
     # 1. LOAD WAZUH ALERT
-    # =========================================================
+    # ========================================================
 
-    alert = load_alert("sample_alerts/ssh_bruteforce.json")
+    alert = load_alert(
+        "sample_alerts/ssh_bruteforce.json"
+    )
 
-    # =========================================================
-    # 2. CONVERT ALERT TO READABLE TEXT
-    # =========================================================
+    # ========================================================
+    # 2. BUILD READABLE ALERT
+    # ========================================================
 
     alert_text = build_alert_text(alert)
-    
-    # =========================================================
-    # CLASSIFY THE INCIDENT
-    # =========================================================
-    
-    incident_classification = classify_incident(alert)
 
     print("\n========== WAZUH ALERT ==========\n")
     print(alert_text)
 
-    # =========================================================
+    # ========================================================
     # 3. EXTRACT SOURCE IP
-    # =========================================================
+    # ========================================================
 
     source_ip = alert.get("srcip", "")
 
-    # =========================================================
-    # 4. DETECT IOC TYPE
-    # =========================================================
+    # ========================================================
+    # 4. DETECT IOC
+    # ========================================================
 
     ioc_type = detect_ioc(source_ip)
 
+    # ========================================================
+    # 5. INITIALIZE THREAT INTELLIGENCE VARIABLES
+    # ========================================================
+
     threat_intelligence = ""
 
-    # Default AbuseIPDB score
     abuse_score = 0
 
-    # =========================================================
-    # 5. THREAT INTELLIGENCE
-    # =========================================================
+    abuse_result = None
+
+    # ========================================================
+    # 6. THREAT INTELLIGENCE
+    # ========================================================
 
     if ioc_type == "IP":
 
-        # -----------------------------------------------------
-        # PRIVATE IP
-        # -----------------------------------------------------
+        # ----------------------------------------------------
+        # PRIVATE INTERNAL IP
+        # ----------------------------------------------------
 
         if is_private_ip(source_ip):
-
-            abuse_score = 0
 
             threat_intelligence = f"""
 ========== Threat Intelligence ==========
@@ -128,166 +300,226 @@ Lookup Status : SKIPPED
 
             print(threat_intelligence)
 
-        # -----------------------------------------------------
+            # Private IP has no AbuseIPDB score.
+            abuse_score = 0
+
+        # ----------------------------------------------------
         # PUBLIC IP
-        # -----------------------------------------------------
+        # ----------------------------------------------------
 
         else:
 
             print("\nChecking AbuseIPDB...\n")
 
-            result = check_ip(source_ip)
+            try:
 
-            # Extract AbuseIPDB confidence score
-            abuse_score = result.get(
-                "data",
-                {}
-            ).get(
-                "abuseConfidenceScore",
-                0
-            )
+                abuse_result = check_ip(source_ip)
 
-            threat_intelligence = format_abuseipdb(result)
+                threat_intelligence = format_abuseipdb(
+                    abuse_result
+                )
 
-            print(threat_intelligence)
+                print(threat_intelligence)
+
+                # --------------------------------------------
+                # EXTRACT ABUSEIPDB SCORE
+                # --------------------------------------------
+
+                data = abuse_result.get(
+                    "data",
+                    {}
+                )
+
+                abuse_score = data.get(
+                    "abuseConfidenceScore",
+                    0
+                )
+
+            except Exception as error:
+
+                threat_intelligence = f"""
+========== Threat Intelligence ==========
+
+IP Address : {source_ip}
+
+Lookup Status : FAILED
+
+Reason :
+AbuseIPDB lookup could not be completed.
+
+Error :
+{error}
+"""
+
+                print(threat_intelligence)
+
+                abuse_score = 0
 
     else:
 
-        threat_intelligence = """
+        threat_intelligence = f"""
 ========== Threat Intelligence ==========
 
-IOC Type : UNKNOWN
+IOC : {source_ip}
 
-Threat Intelligence : Not Available
+IOC Type : {ioc_type}
+
+Threat Intelligence :
+Not available for this IOC type.
 
 Lookup Status : SKIPPED
 """
 
         print(threat_intelligence)
 
-    # =========================================================
-    # 6. RISK ENGINE
-    # =========================================================
+        abuse_score = 0
 
-    mitre_ids = alert.get(
-        "mitre",
-        {}
-    ).get(
-        "id",
-        []
-    )
+    # ========================================================
+    # 7. MITRE IDS
+    # ========================================================
 
-    rule_level = alert.get(
-        "rule",
-        {}
-    ).get(
-        "level",
-        0
-    )
+    mitre = alert.get("mitre", {})
+
+    mitre_ids = mitre.get("id", [])
+
+    # ========================================================
+    # 8. DETERMINISTIC RISK ENGINE
+    # ========================================================
+
+    rule = alert.get("rule", {})
+
+    rule_level = rule.get("level", 0)
+
+    try:
+        rule_level = int(rule_level)
+    except (TypeError, ValueError):
+     rule_level = 0
+
 
     risk_assessment = calculate_risk(
-        rule_level,
-        source_ip,
-        abuse_score,
-        mitre_ids
+    rule_level,
+    source_ip,
+    abuse_score,
+    mitre_ids
+)
+
+    print_risk_assessment(
+        risk_assessment
     )
 
-    # =========================================================
-    # 7. DISPLAY RISK ASSESSMENT
-    # =========================================================
+    # ========================================================
+    # 9. INCIDENT CLASSIFICATION
+    # ========================================================
 
-    print("\n========== RISK ASSESSMENT ==========\n")
+    classification = classify_incident(
+        alert
+    )
 
-    print(
-    f"Risk Score : {risk_assessment['score']}/100"
-)
+    print_classification(
+        classification
+    )
 
-    print(
-    f"Risk Level : {risk_assessment['level']}"
-)
+    # ========================================================
+    # 10. EVIDENCE ENGINE
+    # ========================================================
 
-    print(
-    f"Incident Status : {risk_assessment['status']}"
-)
+    evidence = build_evidence(
+        alert,
+        threat_intelligence,
+        risk_assessment,
+        classification
+    )
 
-    print(
-    f"Confidence : {risk_assessment['confidence']}"
-)
+    print_evidence(
+        evidence
+    )
 
-    print("\nRisk Factors:\n")
-
-    for factor in risk_assessment["factors"]:
-        print(f"- {factor}")
-    
-    # =========================================================
-        # 8. DISPLAY INCIDENT CLASSIFICATION
-    # =========================================================
-    
-    print("\n========== INCIDENT CLASSIFICATION ==========\n")
-
-    print(
-    f"Incident Type : "
-    f"{incident_classification['incident_type']}"
-)
-
-    print(
-    f"Attack Category : "
-    f"{incident_classification['attack_category']}"
-)
-
-    print(
-    f"Primary Technique : "
-    f"{incident_classification['primary_technique']}"
-)
-
-    print(
-    f"Protocol : "
-    f"{incident_classification['protocol']}"
-)
-
-    # =========================================================
-    # 9. BUILD AI CONTEXT
-    # =========================================================
+    # ========================================================
+    # 11. BUILD COMPLETE AI CONTEXT
+    # ========================================================
 
     context = build_context(
-    alert_text,
-    threat_intelligence,
-    risk_assessment,
-    incident_classification
-)
+        alert_text,
+        threat_intelligence,
+        risk_assessment,
+        classification,
+        evidence
+    )
 
-    # =========================================================
-    # 10. AI SOC ANALYSIS
-    # =========================================================
+    # ========================================================
+    # 12. AI SOC ANALYSIS
+    # ========================================================
 
     print("\n========== AI SOC ANALYSIS ==========\n")
 
-    analysis = analyze_alert(context)
+    try:
 
-    print(analysis)
+        analysis = analyze_alert(
+            context
+        )
 
-    # =========================================================
-    # 11. GENERATE REPORT
-    # =========================================================
+        print(analysis)
+
+    except Exception as error:
+
+        print(
+            "AI analysis could not be completed."
+        )
+
+        print(
+            f"Error: {error}"
+        )
+
+        analysis = f"""
+## AI SOC Analysis
+
+AI analysis could not be completed because the AI provider
+returned an error.
+
+Error:
+{error}
+
+The deterministic SOC assessment remains available in this report.
+"""
+
+    # ========================================================
+    # 13. BUILD COMPLETE REPORT DATA
+    # ========================================================
+
+    report_alert_text = build_report_context(
+        alert_text,
+        threat_intelligence,
+        risk_assessment,
+        classification,
+        evidence
+    )
+
+    # ========================================================
+    # 14. GENERATE REPORT
+    # ========================================================
 
     report = generate_report(
-        alert_text
-        + "\n"
-        + threat_intelligence,
+        report_alert_text,
         analysis
     )
 
-    # =========================================================
-    # 12. SAVE REPORT
-    # =========================================================
+    # ========================================================
+    # 15. SAVE REPORT
+    # ========================================================
 
-    filepath = save_report(report)
+    filepath = save_report(
+        report
+    )
 
     print(
         f"\nReport Saved Successfully!\n"
         f"{filepath}"
     )
 
+
+# ============================================================
+# PROGRAM ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
     main()

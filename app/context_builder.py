@@ -2,8 +2,24 @@ def build_context(
     alert_text,
     threat_intelligence,
     risk_assessment,
-    incident_classification
+    classification,
+    evidence
 ):
+    """
+    Build the complete evidence-based context for the AI SOC analyst.
+    """
+
+    confirmed_text = "\n".join(
+        f"- {item}" for item in evidence.get("confirmed", [])
+    )
+
+    suspicious_text = "\n".join(
+        f"- {item}" for item in evidence.get("suspicious", [])
+    )
+
+    unconfirmed_text = "\n".join(
+        f"- {item}" for item in evidence.get("unconfirmed", [])
+    )
 
     context = f"""
 ================ INCIDENT CONTEXT ================
@@ -12,71 +28,90 @@ def build_context(
 
 {alert_text}
 
-==============================================
+
+===================================================
 
 ### THREAT INTELLIGENCE
 
 {threat_intelligence}
 
-==============================================
+
+===================================================
 
 ### RISK ASSESSMENT
 
-Risk Score: {risk_assessment['score']}/100
+Risk Score:
+{risk_assessment.get("score", "UNKNOWN")}/100
 
-Risk Level: {risk_assessment['level']}
+Risk Level:
+{risk_assessment.get("level", "UNKNOWN")}
 
-Incident Status: {risk_assessment['status']}
+Incident Status:
+{risk_assessment.get("status", "UNKNOWN")}
 
-Confidence: {risk_assessment['confidence']}
+Confidence:
+{risk_assessment.get("confidence", "UNKNOWN")}
 
-Risk Factors:
 
-"""
-
-    for factor in risk_assessment["factors"]:
-        context += f"- {factor}\n"
-
-    context += f"""
-
-==============================================
+===================================================
 
 ### INCIDENT CLASSIFICATION
 
-Incident Type: {incident_classification['incident_type']}
+Incident Type:
+{classification.get("incident_type", "UNKNOWN")}
 
-Attack Category: {incident_classification['attack_category']}
+Attack Category:
+{classification.get("attack_category", "UNKNOWN")}
 
-Primary Technique: {incident_classification['primary_technique']}
+Primary Technique:
+{classification.get("primary_technique", "UNKNOWN")}
 
-Protocol: {incident_classification['protocol']}
+Protocol:
+{classification.get("protocol", "UNKNOWN")}
 
-==============================================
 
-### SOC ANALYSIS INSTRUCTIONS
+===================================================
 
-Analyze this incident using the evidence
-provided above.
+### CONFIRMED EVIDENCE
 
-Important rules:
+{confirmed_text}
 
-- Treat Wazuh data as observed evidence.
-- Treat threat intelligence as supporting evidence.
-- Treat the Risk Engine assessment as the deterministic
-  baseline risk assessment.
-- Treat the Incident Classification as the deterministic
-  classification of the observed behavior.
-- Do not change the deterministic risk score.
-- Do not claim successful compromise unless evidence
-  confirms it.
-- Clearly separate confirmed facts from interpretations
-  and unconfirmed possibilities.
-- Respect the Incident Status and Confidence values.
-- Explain why the incident was classified this way.
-- Provide investigation steps.
-- Provide appropriate remediation.
-- Maintain a professional SOC analyst perspective.
 
+===================================================
+
+### SUSPICIOUS OBSERVATIONS
+
+{suspicious_text}
+
+
+===================================================
+
+### UNCONFIRMED
+
+{unconfirmed_text}
+
+
+===================================================
+
+### SOC ANALYSIS REQUIREMENTS
+
+Analyze this incident as a professional SOC analyst.
+
+IMPORTANT:
+
+1. Clearly separate confirmed facts from interpretations.
+2. Do not claim compromise unless the provided evidence confirms it.
+3. Do not claim successful authentication unless successful authentication
+   is present in the evidence.
+4. Do not claim lateral movement unless there is evidence of lateral movement.
+5. Do not treat threat intelligence absence as proof that an IP is safe.
+6. Respect the deterministic risk assessment and incident classification.
+7. Explain why the incident is suspicious, benign, or confirmed malicious.
+8. Recommend investigation steps based on the available evidence.
+9. Do not invent usernames, processes, malware, commands, or events that
+   are not present in the supplied evidence.
+
+===================================================
 """
 
     return context

@@ -1,80 +1,126 @@
 from ip_utils import is_private_ip
 
 
-def calculate_risk(rule_level, source_ip, abuse_score, mitre_ids):
+def calculate_risk(
+    rule_level,
+    source_ip,
+    abuse_score,
+    mitre_ids
+):
+    """
+    Deterministic SOC risk scoring engine.
+
+    Returns:
+        score
+        level
+        status
+        confidence
+        factors
+    """
 
     score = 0
     factors = []
 
-    # =========================================================
-    # 1. WAZUH RULE SEVERITY
-    # =========================================================
+    # ========================================================
+    # WAZUH RULE SEVERITY
+    # ========================================================
+
+    try:
+        rule_level = int(rule_level)
+    except (TypeError, ValueError):
+        rule_level = 0
 
     if rule_level >= 10:
+
         score += 30
-        factors.append("Wazuh Rule Level 10+: +30")
+
+        factors.append(
+            "Wazuh Rule Level 10+: +30"
+        )
 
     elif rule_level >= 7:
+
         score += 20
-        factors.append("Wazuh Rule Level 7-9: +20")
+
+        factors.append(
+            "Wazuh Rule Level 7-9: +20"
+        )
 
     elif rule_level >= 4:
+
         score += 10
-        factors.append("Wazuh Rule Level 4-6: +10")
 
-    else:
-        score += 5
-        factors.append("Wazuh Rule Level 0-3: +5")
+        factors.append(
+            "Wazuh Rule Level 4-6: +10"
+        )
 
-    # =========================================================
-    # 2. IP CLASSIFICATION
-    # =========================================================
+    # ========================================================
+    # IP TYPE
+    # ========================================================
 
     if is_private_ip(source_ip):
 
         score += 5
-        factors.append("Private Internal IP: +5")
+
+        factors.append(
+            "Private Internal IP: +5"
+        )
 
     else:
 
         score += 15
-        factors.append("Public IP: +15")
 
-    # =========================================================
-    # 3. ABUSEIPDB REPUTATION
-    # =========================================================
+        factors.append(
+            "Public IP: +15"
+        )
 
-    if abuse_score >= 75:
+    # ========================================================
+    # ABUSEIPDB
+    # ========================================================
+
+    try:
+        abuse_score = int(abuse_score)
+    except (TypeError, ValueError):
+        abuse_score = 0
+
+    if abuse_score >= 80:
 
         score += 25
-        factors.append("AbuseIPDB Score 75-100%: +25")
+
+        factors.append(
+            "AbuseIPDB Score 80%+: +25"
+        )
 
     elif abuse_score >= 50:
 
         score += 15
-        factors.append("AbuseIPDB Score 50-74%: +15")
 
-    elif abuse_score >= 25:
+        factors.append(
+            "AbuseIPDB Score 50-79%: +15"
+        )
 
-        score += 10
-        factors.append("AbuseIPDB Score 25-49%: +10")
-
-    elif abuse_score > 0:
+    elif abuse_score >= 20:
 
         score += 5
-        factors.append("AbuseIPDB Score 1-24%: +5")
+
+        factors.append(
+            "AbuseIPDB Score 20-49%: +5"
+        )
 
     else:
 
-        factors.append("AbuseIPDB Score 0%: +0")
+        factors.append(
+            f"AbuseIPDB Score {abuse_score}%: +0"
+        )
 
-    # =========================================================
-    # 4. MITRE TECHNIQUES
-    # =========================================================
+    # ========================================================
+    # MITRE TECHNIQUES
+    # ========================================================
 
     if "T1110.001" in mitre_ids:
 
         score += 10
+
         factors.append(
             "MITRE T1110.001 Password Guessing: +10"
         )
@@ -82,79 +128,55 @@ def calculate_risk(rule_level, source_ip, abuse_score, mitre_ids):
     if "T1021.004" in mitre_ids:
 
         score += 10
+
         factors.append(
             "MITRE T1021.004 SSH: +10"
         )
 
-    # =========================================================
-    # 5. LIMIT SCORE
-    # =========================================================
+    # ========================================================
+    # CAP SCORE
+    # ========================================================
 
     score = min(score, 100)
 
-    # =========================================================
-    # 6. DETERMINE RISK LEVEL
-    # =========================================================
+    # ========================================================
+    # RISK LEVEL
+    # ========================================================
 
-    if score >= 75:
+    if score >= 70:
 
-        risk_level = "CRITICAL"
-
-    elif score >= 50:
-
-        risk_level = "HIGH"
-
-    elif score >= 25:
-
-        risk_level = "MEDIUM"
-
-    else:
-
-        risk_level = "LOW"
-
-    # =========================================================
-    # 7. DETERMINE INCIDENT STATUS
-    # =========================================================
-
-    if score >= 75:
-
-        incident_status = "SUSPICIOUS"
+        level = "CRITICAL"
 
     elif score >= 50:
 
-        incident_status = "SUSPICIOUS"
+        level = "HIGH"
+
+    elif score >= 30:
+
+        level = "MEDIUM"
 
     else:
 
-        incident_status = "INCONCLUSIVE"
+        level = "LOW"
 
-    # =========================================================
-    # 8. DETERMINE CONFIDENCE
-    # =========================================================
+    # ========================================================
+    # INCIDENT STATUS
+    # ========================================================
 
-    confidence_points = 0
+    # The risk engine does NOT claim compromise.
+    # Failed authentication alone is suspicious.
 
-    # Strong Wazuh detection
-    if rule_level >= 10:
-        confidence_points += 2
+    status = "SUSPICIOUS"
 
-    # MITRE mappings provide behavioral context
-    if mitre_ids:
-        confidence_points += 1
+    # ========================================================
+    # CONFIDENCE
+    # ========================================================
 
-    # External reputation
-    if abuse_score > 0:
-        confidence_points += 1
-
-    # Private IP has no external reputation
-    if is_private_ip(source_ip):
-        confidence_points -= 1
-
-    if confidence_points >= 4:
-
-        confidence = "HIGH"
-
-    elif confidence_points >= 2:
+    if (
+        rule_level >= 10
+        and "T1110.001" in mitre_ids
+        and "T1021.004" in mitre_ids
+    ):
 
         confidence = "MEDIUM"
 
@@ -162,14 +184,14 @@ def calculate_risk(rule_level, source_ip, abuse_score, mitre_ids):
 
         confidence = "LOW"
 
-    # =========================================================
-    # 9. RETURN COMPLETE RISK ASSESSMENT
-    # =========================================================
+    # ========================================================
+    # RETURN
+    # ========================================================
 
     return {
         "score": score,
-        "level": risk_level,
-        "status": incident_status,
+        "level": level,
+        "status": status,
         "confidence": confidence,
         "factors": factors
     }
