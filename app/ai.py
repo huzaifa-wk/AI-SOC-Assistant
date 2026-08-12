@@ -4,26 +4,42 @@ from config import OPENROUTER_API_KEY, MODEL_NAME
 from prompts import SYSTEM_PROMPT
 
 
+# ============================================================
+# OPENROUTER CLIENT
+# ============================================================
+
 client = OpenAI(
     api_key=OPENROUTER_API_KEY,
     base_url="https://openrouter.ai/api/v1",
 )
 
 
-def analyze_alert(alert_text):
+# ============================================================
+# AI SOC ANALYSIS
+# ============================================================
+
+def analyze_alert(context):
+    """
+    Send the prepared SOC incident context to the AI
+    and return the generated analysis.
+    """
 
     prompt = f"""
 {SYSTEM_PROMPT}
 
 ================ INCIDENT DATA ================
 
-{alert_text}
+{context}
 
 ================================================
 
-Analyze the incident according to the SOC analysis rules.
-"""
+Analyze the incident according to the SOC analysis
+requirements provided above.
 
+Base the analysis only on the supplied evidence.
+Do not invent events or claim successful compromise
+without supporting evidence.
+"""
 
     try:
 
@@ -38,8 +54,23 @@ Analyze the incident according to the SOC analysis rules.
             temperature=0.2,
         )
 
-        return response.choices[0].message.content
+        # ----------------------------------------------------
+        # SAFELY EXTRACT RESPONSE
+        # ----------------------------------------------------
 
+        if not response.choices:
+            raise RuntimeError(
+                "AI provider returned no choices."
+            )
+
+        analysis = response.choices[0].message.content
+
+        if not analysis:
+            raise RuntimeError(
+                "AI provider returned an empty response."
+            )
+
+        return analysis
 
     except Exception as error:
 
@@ -47,18 +78,27 @@ Analyze the incident according to the SOC analysis rules.
         print("The AI analysis request failed.")
         print(f"Error: {error}")
 
-        return """
+        return f"""
 ## AI Analysis Unavailable
 
-The SOC alert and threat intelligence were successfully collected,
-but the AI analysis service did not return a valid response.
+The SOC alert, threat intelligence, risk assessment,
+incident classification, and evidence assessment were
+successfully processed, but the AI analysis service
+did not return a valid response.
 
 ### Status
 
-- Wazuh Alert: Successfully processed
-- Threat Intelligence: Successfully processed
+- Wazuh Alert: Processed
+- Threat Intelligence: Processed
+- Risk Assessment: Processed
+- Incident Classification: Processed
+- Evidence Assessment: Processed
 - AI Analysis: Failed
-- Incident Classification: Requires manual investigation
+- Manual Investigation: Required
 
-Please retry the analysis.
+### Error
+
+{error}
+
+The deterministic SOC assessment remains available.
 """

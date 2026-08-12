@@ -1,32 +1,71 @@
+import ipaddress
 import re
 
 
+# ============================================================
+# IOC DETECTION
+# ============================================================
+
 def detect_ioc(ioc):
+    """
+    Detect the type of an IOC.
+
+    Supported types:
+    - IP address
+    - Domain
+    - MD5
+    - SHA1
+    - SHA256
+    """
+
+    if not isinstance(ioc, str):
+        return "UNKNOWN"
 
     ioc = ioc.strip()
 
-    # IPv4 Address
-    ip_pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
+    if not ioc:
+        return "UNKNOWN"
 
-    if re.match(ip_pattern, ioc):
+    # --------------------------------------------------------
+    # IP ADDRESS
+    # --------------------------------------------------------
+
+    try:
+        ipaddress.ip_address(ioc)
         return "IP"
 
-    # Domain
-    domain_pattern = r"^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    except ValueError:
+        pass
 
-    if re.match(domain_pattern, ioc):
+    # --------------------------------------------------------
+    # DOMAIN
+    # --------------------------------------------------------
+
+    domain_pattern = (
+        r"^(?=.{1,253}$)"
+        r"(?:[a-zA-Z0-9]"
+        r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
+        r"[a-zA-Z]{2,63}$"
+    )
+
+    if re.fullmatch(domain_pattern, ioc):
         return "DOMAIN"
 
-    # MD5 Hash
-    if len(ioc) == 32 and all(c in "0123456789abcdefABCDEF" for c in ioc):
+    # --------------------------------------------------------
+    # HASHES
+    # --------------------------------------------------------
+
+    if re.fullmatch(r"[0-9a-fA-F]{32}", ioc):
         return "MD5"
 
-    # SHA1 Hash
-    if len(ioc) == 40 and all(c in "0123456789abcdefABCDEF" for c in ioc):
+    if re.fullmatch(r"[0-9a-fA-F]{40}", ioc):
         return "SHA1"
 
-    # SHA256 Hash
-    if len(ioc) == 64 and all(c in "0123456789abcdefABCDEF" for c in ioc):
+    if re.fullmatch(r"[0-9a-fA-F]{64}", ioc):
         return "SHA256"
+
+    # --------------------------------------------------------
+    # UNKNOWN
+    # --------------------------------------------------------
 
     return "UNKNOWN"

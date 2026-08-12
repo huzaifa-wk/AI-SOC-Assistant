@@ -1,13 +1,26 @@
 def get_threat_rating(score):
+    """
+    Convert an AbuseIPDB confidence score into
+    a readable SOC threat rating.
+    """
 
-    if score <= 20:
+    try:
+        score = int(score)
+    except (TypeError, ValueError):
+        score = 0
 
+    score = max(
+        0,
+        min(score, 100)
+    )
+
+    if score == 0:
         return "🟢 SAFE"
 
-    elif score <= 60:
+    if score <= 25:
+        return "🟡 LOW"
 
-        return "🟡 SUSPICIOUS"
+    if score <= 75:
+        return "🟠 MEDIUM"
 
-    else:
-
-        return "🔴 MALICIOUS"
+    return "🔴 HIGH"
