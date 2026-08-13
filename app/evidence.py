@@ -5,35 +5,113 @@ def build_evidence(
     classification
 ):
     """
-    Build evidence-based incident context.
+    Build an evidence-based incident assessment.
 
-    Separates confirmed evidence from suspicious observations
-    and unconfirmed possibilities.
+    Separates:
+        - Confirmed evidence
+        - Suspicious observations
+        - Unconfirmed possibilities
+
+    The function does not determine compromise.
+    It only organizes evidence already present
+    in the incident data.
     """
 
-    rule = alert.get("rule", {})
-    source_ip = alert.get("srcip", "N/A")
+    # ========================================================
+    # VALIDATE INPUTS
+    # ========================================================
+
+    if not isinstance(alert, dict):
+        alert = {}
+
+    if not isinstance(risk_assessment, dict):
+        risk_assessment = {}
+
+    if not isinstance(classification, dict):
+        classification = {}
+
+    rule = alert.get(
+        "rule",
+        {}
+    )
+
+    if not isinstance(rule, dict):
+        rule = {}
+
+    source_ip = alert.get(
+        "srcip",
+        "N/A"
+    )
+
+    if not source_ip:
+        source_ip = "N/A"
 
     # ========================================================
     # CONFIRMED EVIDENCE
     # ========================================================
 
     confirmed = [
-        f"Wazuh rule {rule.get('id', 'N/A')} generated the alert.",
-        f"Rule description: {rule.get('description', 'N/A')}.",
-        f"Rule level: {rule.get('level', 'N/A')}.",
-        f"Source IP observed: {source_ip}.",
+        (
+            f"Wazuh rule "
+            f"{rule.get('id', 'N/A')} "
+            f"generated the alert."
+        ),
+        (
+            f"Rule description: "
+            f"{rule.get('description', 'N/A')}."
+        ),
+        (
+            f"Rule level: "
+            f"{rule.get('level', 'N/A')}."
+        ),
+        (
+            f"Source IP observed: "
+            f"{source_ip}."
+        ),
     ]
 
-    mitre_ids = alert.get("mitre", {}).get("id", [])
+    # ========================================================
+    # MITRE TECHNIQUES
+    # ========================================================
+
+    mitre = alert.get(
+        "mitre",
+        {}
+    )
+
+    if not isinstance(mitre, dict):
+        mitre = {}
+
+    mitre_ids = mitre.get(
+        "id",
+        []
+    )
 
     if isinstance(mitre_ids, str):
-        mitre_ids = [mitre_ids]
 
-    if mitre_ids:
+        mitre_ids = [
+            mitre_ids
+        ]
+
+    elif not isinstance(
+        mitre_ids,
+        (list, tuple, set)
+    ):
+
+        mitre_ids = []
+
+    normalized_mitre_ids = [
+        str(mitre_id).strip().upper()
+        for mitre_id in mitre_ids
+        if mitre_id
+    ]
+
+    if normalized_mitre_ids:
+
         confirmed.append(
-            "MITRE techniques associated with the alert: "
-            f"{', '.join(mitre_ids)}."
+            "MITRE techniques associated with "
+            "the alert: "
+            f"{', '.join(normalized_mitre_ids)}."
         )
 
     # ========================================================
@@ -41,10 +119,15 @@ def build_evidence(
     # ========================================================
 
     suspicious = [
-        "The observed authentication failures may indicate "
-        "password-guessing activity.",
-        "The activity requires investigation to determine whether "
-        "the source is authorized or compromised.",
+        (
+            "The observed authentication failures "
+            "may indicate password-guessing activity."
+        ),
+        (
+            "The activity requires investigation to "
+            "determine whether the source is authorized "
+            "or potentially compromised."
+        ),
     ]
 
     # ========================================================
@@ -65,7 +148,9 @@ def build_evidence(
 
     return {
         "confirmed": confirmed,
+
         "suspicious": suspicious,
+
         "unconfirmed": unconfirmed,
 
         "risk_level": risk_assessment.get(

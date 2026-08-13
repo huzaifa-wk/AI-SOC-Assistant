@@ -4,17 +4,54 @@ from ti_formatter import format_abuseipdb
 from ip_utils import is_private_ip
 
 
+def _normalize_score(value):
+    """
+    Convert an AbuseIPDB score into a safe integer.
+
+    Invalid values return 0.
+    """
+
+    try:
+        score = int(value)
+    except (TypeError, ValueError):
+        return 0
+
+    return max(0, min(score, 100))
+
+
 def get_threat_intelligence(source_ip):
     """
     Perform threat-intelligence lookup for an IOC.
 
+    Processing flow:
+
+        IOC
+         ↓
+        Detect IOC type
+         ↓
+        Private IP?
+        ↓
+        AbuseIPDB lookup
+         ↓
+        Formatted TI report
+
     Returns:
         tuple[str, int]:
-            Threat-intelligence report text and AbuseIPDB score.
+            Threat-intelligence report text
+            AbuseIPDB abuse confidence score
     """
 
     # --------------------------------------------------------
-    # No source IP
+    # NORMALIZE INPUT
+    # --------------------------------------------------------
+
+    if not isinstance(source_ip, str):
+        source_ip = ""
+
+    source_ip = source_ip.strip()
+
+    # --------------------------------------------------------
+    # NO SOURCE IP
     # --------------------------------------------------------
 
     if not source_ip:
@@ -25,12 +62,12 @@ def get_threat_intelligence(source_ip):
 Source IP : N/A
 
 Lookup Status : SKIPPED
-""",
-            0
+""".strip(),
+            0,
         )
 
     # --------------------------------------------------------
-    # Detect IOC type
+    # IOC DETECTION
     # --------------------------------------------------------
 
     ioc_type = detect_ioc(source_ip)
@@ -48,12 +85,12 @@ Threat Intelligence :
 Not available for this IOC type.
 
 Lookup Status : SKIPPED
-""",
-            0
+""".strip(),
+            0,
         )
 
     # --------------------------------------------------------
-    # Private internal IP
+    # PRIVATE / INTERNAL IP
     # --------------------------------------------------------
 
     if is_private_ip(source_ip):
@@ -74,12 +111,12 @@ Threat Intelligence platforms.
 Threat Rating : 🔵 INTERNAL
 
 Lookup Status : SKIPPED
-""",
-            0
+""".strip(),
+            0,
         )
 
     # --------------------------------------------------------
-    # Public IP → AbuseIPDB
+    # PUBLIC IP → ABUSEIPDB
     # --------------------------------------------------------
 
     print("\nChecking AbuseIPDB...\n")
@@ -87,27 +124,41 @@ Lookup Status : SKIPPED
     try:
         result = check_ip(source_ip)
 
-        formatted_report = format_abuseipdb(result)
+        if not isinstance(result, dict):
+            raise ValueError(
+                "Invalid AbuseIPDB response."
+            )
 
-        data = result.get("data", {})
-
-        abuse_score = data.get(
-            "abuseConfidenceScore",
-            0
+        formatted_report = format_abuseipdb(
+            result
         )
 
-        try:
-            abuse_score = int(abuse_score)
-        except (TypeError, ValueError):
-            abuse_score = 0
+        data = result.get(
+            "data",
+            {}
+        )
 
-        return formatted_report, abuse_score
+        if not isinstance(data, dict):
+            data = {}
+
+        abuse_score = _normalize_score(
+            data.get(
+                "abuseConfidenceScore",
+                0
+            )
+        )
+
+        return (
+            formatted_report,
+            abuse_score,
+        )
 
     # --------------------------------------------------------
-    # AbuseIPDB failure
+    # ABUSEIPDB FAILURE
     # --------------------------------------------------------
 
     except Exception as error:
+
         return (
             f"""
 ========== Threat Intelligence ==========
@@ -121,6 +172,6 @@ AbuseIPDB lookup could not be completed.
 
 Error :
 {error}
-""",
-            0
+""".strip(),
+            0,
         )

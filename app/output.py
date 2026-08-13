@@ -1,48 +1,39 @@
-def print_alert(alert_text):
+def print_section(title):
+    """Print a consistent console section header."""
 
-    print("\n========== WAZUH ALERT ==========\n")
+    print(f"\n========== {title} ==========\n")
+
+
+def print_alert(alert_text):
+    """Display the formatted Wazuh alert."""
+
+    print_section("WAZUH ALERT")
     print(alert_text)
 
 
-def print_risk_assessment(risk):
+def print_risk(risk):
+    """Display the deterministic SOC risk assessment."""
 
-    print("\n========== RISK ASSESSMENT ==========\n")
+    print_section("RISK ASSESSMENT")
 
-    print(
-        f"Risk Score : "
-        f"{risk.get('score', 0)}/100"
-    )
-
-    print(
-        f"Risk Level : "
-        f"{risk.get('level', 'UNKNOWN')}"
-    )
-
-    print(
-        f"Incident Status : "
-        f"{risk.get('status', 'UNKNOWN')}"
-    )
-
-    print(
-        f"Confidence : "
-        f"{risk.get('confidence', 'UNKNOWN')}"
-    )
+    print(f"Risk Score : {risk.get('score', 0)}/100")
+    print(f"Risk Level : {risk.get('level', 'UNKNOWN')}")
+    print(f"Incident Status : {risk.get('status', 'UNKNOWN')}")
+    print(f"Confidence : {risk.get('confidence', 'UNKNOWN')}")
 
     factors = risk.get("factors", [])
 
     if factors:
-
-        print("\nRisk Factors:\n")
+        print("\nRisk Factors:")
 
         for factor in factors:
             print(f"- {factor}")
 
 
 def print_classification(classification):
+    """Display the incident classification."""
 
-    print(
-        "\n========== INCIDENT CLASSIFICATION ==========\n"
-    )
+    print_section("INCIDENT CLASSIFICATION")
 
     print(
         f"Incident Type : "
@@ -66,40 +57,40 @@ def print_classification(classification):
 
 
 def print_evidence(evidence):
+    """Display the evidence assessment."""
 
-    print(
-        "\n========== EVIDENCE ASSESSMENT ==========\n"
-    )
+    print_section("EVIDENCE ASSESSMENT")
 
-    print("Confirmed Evidence:\n")
+    print("Confirmed Evidence:")
 
     for item in evidence.get("confirmed", []):
         print(f"- {item}")
 
-    print("\nSuspicious Observations:\n")
+    print("\nSuspicious Observations:")
 
     for item in evidence.get("suspicious", []):
         print(f"- {item}")
 
-    print("\nUnconfirmed:\n")
+    print("\nUnconfirmed:")
 
     for item in evidence.get("unconfirmed", []):
         print(f"- {item}")
 
 
 def print_ai_analysis_start():
+    """Display the AI analysis section header."""
 
-    print("\n========== AI SOC ANALYSIS ==========\n")
+    print_section("AI SOC ANALYSIS")
 
 
 def print_ai_analysis(analysis):
+    """Display the AI SOC analysis."""
 
     print(analysis)
 
 
 def print_report_saved(filepath):
+    """Display the saved report path."""
 
-    print(
-        "\nReport Saved Successfully!\n"
-        f"{filepath}"
-    )
+    print("\nReport Saved Successfully!")
+    print(f"Report Path : {filepath}")

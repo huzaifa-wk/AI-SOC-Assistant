@@ -3,9 +3,15 @@ import ipaddress
 
 def is_private_ip(ip):
     """
-    Return True if the supplied IP address is private.
+    Determine whether an IP address is private/internal.
 
-    Invalid or empty values return False.
+    Args:
+        ip: IPv4 or IPv6 address.
+
+    Returns:
+        bool:
+            True  -> private/internal address
+            False -> public, invalid, or empty address
     """
 
     if not isinstance(ip, str):
@@ -17,7 +23,9 @@ def is_private_ip(ip):
         return False
 
     try:
-        return ipaddress.ip_address(ip).is_private
+        address = ipaddress.ip_address(ip)
 
     except ValueError:
         return False
+
+    return address.is_private

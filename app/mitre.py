@@ -29,7 +29,11 @@ MITRE_DATABASE = {
 
 def enrich_mitre(mitre_ids):
     """
-    Enrich MITRE technique IDs with local SOC knowledge.
+    Enrich MITRE ATT&CK technique IDs with
+    local SOC knowledge.
+
+    Unknown or unsupported technique IDs are
+    safely ignored.
     """
 
     if not isinstance(mitre_ids, (list, tuple)):
@@ -39,7 +43,14 @@ def enrich_mitre(mitre_ids):
 
     for mitre_id in mitre_ids:
 
-        technique = MITRE_DATABASE.get(mitre_id)
+        if not isinstance(mitre_id, str):
+            continue
+
+        mitre_id = mitre_id.strip().upper()
+
+        technique = MITRE_DATABASE.get(
+            mitre_id
+        )
 
         if technique:
             enriched.append(

@@ -3,20 +3,49 @@ import re
 
 
 # ============================================================
+# IOC PATTERNS
+# ============================================================
+
+DOMAIN_PATTERN = re.compile(
+    r"^(?=.{1,253}$)"
+    r"(?:[a-zA-Z0-9]"
+    r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
+    r"[a-zA-Z]{2,63}$"
+)
+
+MD5_PATTERN = re.compile(
+    r"^[0-9a-fA-F]{32}$"
+)
+
+SHA1_PATTERN = re.compile(
+    r"^[0-9a-fA-F]{40}$"
+)
+
+SHA256_PATTERN = re.compile(
+    r"^[0-9a-fA-F]{64}$"
+)
+
+
+# ============================================================
 # IOC DETECTION
 # ============================================================
 
 def detect_ioc(ioc):
     """
-    Detect the type of an IOC.
+    Detect the type of an Indicator of Compromise (IOC).
 
-    Supported types:
-    - IP address
-    - Domain
-    - MD5
-    - SHA1
-    - SHA256
+    Supported IOC types:
+        - IP
+        - DOMAIN
+        - MD5
+        - SHA1
+        - SHA256
+        - UNKNOWN
     """
+
+    # --------------------------------------------------------
+    # INPUT VALIDATION
+    # --------------------------------------------------------
 
     if not isinstance(ioc, str):
         return "UNKNOWN"
@@ -41,27 +70,20 @@ def detect_ioc(ioc):
     # DOMAIN
     # --------------------------------------------------------
 
-    domain_pattern = (
-        r"^(?=.{1,253}$)"
-        r"(?:[a-zA-Z0-9]"
-        r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
-        r"[a-zA-Z]{2,63}$"
-    )
-
-    if re.fullmatch(domain_pattern, ioc):
+    if DOMAIN_PATTERN.fullmatch(ioc):
         return "DOMAIN"
 
     # --------------------------------------------------------
     # HASHES
     # --------------------------------------------------------
 
-    if re.fullmatch(r"[0-9a-fA-F]{32}", ioc):
+    if MD5_PATTERN.fullmatch(ioc):
         return "MD5"
 
-    if re.fullmatch(r"[0-9a-fA-F]{40}", ioc):
+    if SHA1_PATTERN.fullmatch(ioc):
         return "SHA1"
 
-    if re.fullmatch(r"[0-9a-fA-F]{64}", ioc):
+    if SHA256_PATTERN.fullmatch(ioc):
         return "SHA256"
 
     # --------------------------------------------------------
